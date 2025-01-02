@@ -14,8 +14,11 @@ type PermissionCallback = (result: boolean) => void;
 const bleManager = new BleManager();
 
 const SERVICE_ID = 'b7ef1193-dc2e-4362-93d3-df429eb3ad10';
-// const CMD_CHARAC_ID = '00ce7a72-ec08-473d-943e-81ec27fdc600';
+const CMD_CHARAC_ID = '00ce7a72-ec08-473d-943e-81ec27fdc600';
 const DATA_CHARAC_ID = '00ce7a72-ec08-473d-943e-81ec27fdc5f2';
+
+// const SERVICE_ID = '00000002-0000-1000-8000-00805f9b34fb';
+// const DATA_CHARAC_ID = '0000fe42-cc7a-482a-984a-7f2ed5b3e512';
 
 // const CONNECTED_DEVICE_DUMMY = {
 //   id: 1,
@@ -29,14 +32,15 @@ interface BluetoothLowEnergyApi {
   isScanningDevice: boolean;
   connectToDevice: (deviceId: Device) => Promise<void>;
   connectedDevice: Device | null;
-  monitoredData: string;
+  monitoredData: number;
+  setMonitoredData: (value: number) => void;
 }
 
 export default function useBle(): BluetoothLowEnergyApi {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [isScanningDevice, setIsScanningDevice] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
-  const [monitoredData, setMonitoredData] = useState('');
+  const [monitoredData, setMonitoredData] = useState(1);
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -118,7 +122,7 @@ export default function useBle(): BluetoothLowEnergyApi {
       ToastAndroid.show('No Characteristic Found', ToastAndroid.SHORT);
       return;
     }
-    setMonitoredData('Success Getting the Data');
+    setMonitoredData((prevState: number) => prevState + 1);
   };
 
   const startStreamingData = async (device: Device) => {
@@ -141,5 +145,6 @@ export default function useBle(): BluetoothLowEnergyApi {
     connectToDevice,
     connectedDevice,
     monitoredData,
+    setMonitoredData,
   };
 }
