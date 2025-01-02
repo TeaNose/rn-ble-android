@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {PermissionsAndroid, ToastAndroid} from 'react-native';
+import {Alert, PermissionsAndroid, ToastAndroid} from 'react-native';
 import {
   BleError,
   BleManager,
@@ -80,7 +80,7 @@ export default function useBle(): BluetoothLowEnergyApi {
     bleManager.startDeviceScan(null, null, (error, device) => {
       if (error) {
         setIsScanningDevice(false);
-        ToastAndroid.show('Error Scanning Devices', ToastAndroid.SHORT);
+        Alert.alert('Error Scanning Devices', String(error?.message));
       }
       if (device) {
         setAllDevices(prevState => {
@@ -90,6 +90,7 @@ export default function useBle(): BluetoothLowEnergyApi {
           return prevState;
         });
         setIsScanningDevice(false);
+        bleManager.stopDeviceScan();
       }
     });
   };
@@ -102,7 +103,7 @@ export default function useBle(): BluetoothLowEnergyApi {
       bleManager.stopDeviceScan();
       startStreamingData(device);
     } catch (error) {
-      ToastAndroid.show('Error Connecting Device', ToastAndroid.SHORT);
+      Alert.alert('Error Connecting Device', JSON.stringify(error));
     }
   };
 
@@ -111,7 +112,7 @@ export default function useBle(): BluetoothLowEnergyApi {
     characteristic: Characteristic | null,
   ) => {
     if (error) {
-      ToastAndroid.show('Error Detect Data', ToastAndroid.SHORT);
+      Alert.alert('Error Detecting Data', JSON.stringify(error));
       return;
     } else if (!characteristic) {
       ToastAndroid.show('No Characteristic Found', ToastAndroid.SHORT);
