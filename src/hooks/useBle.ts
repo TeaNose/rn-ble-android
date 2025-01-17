@@ -8,6 +8,7 @@ import {
 } from 'react-native-ble-plx';
 import DeviceInfo from 'react-native-device-info';
 import {PERMISSIONS} from 'react-native-permissions';
+import {Buffer} from 'buffer';
 
 type PermissionCallback = (result: boolean) => void;
 
@@ -17,7 +18,7 @@ const SERVICE_ID = 'b7ef1193-dc2e-4362-93d3-df429eb3ad10';
 const CMD_CHARAC_ID = '00ce7a72-ec08-473d-943e-81ec27fdc600';
 const DATA_CHARAC_ID = '00ce7a72-ec08-473d-943e-81ec27fdc5f2';
 
-// const SERVICE_ID = '00000002-0000-1000-8000-00805f9b34fb';
+// const SERVICE_ID = '0000fe40-cc7a-482a-984a-7f2ed5b3e512';
 // const DATA_CHARAC_ID = '0000fe42-cc7a-482a-984a-7f2ed5b3e512';
 
 // const CONNECTED_DEVICE_DUMMY = {
@@ -41,6 +42,7 @@ export default function useBle(): BluetoothLowEnergyApi {
   const [isScanningDevice, setIsScanningDevice] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [monitoredData, setMonitoredData] = useState(1);
+  const [writeCharacteristic, setWriteCharacteristic] = useState(null);
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -86,7 +88,7 @@ export default function useBle(): BluetoothLowEnergyApi {
         setIsScanningDevice(false);
         Alert.alert('Error Scanning Devices', String(error?.message));
       }
-      if (device) {
+      if (device && device?.name?.includes('DT_ZB_20703754')) {
         setAllDevices(prevState => {
           if (!isDuplicateDevice(prevState, device)) {
             return [...prevState, device];
@@ -104,6 +106,19 @@ export default function useBle(): BluetoothLowEnergyApi {
       const deviceConnection = await bleManager.connectToDevice(device?.id);
       setConnectedDevice(deviceConnection);
       await deviceConnection.discoverAllServicesAndCharacteristics();
+
+      const characteristic = await deviceConnection.characteristicsForService(
+        SERVICE_ID,
+      );
+      characteristic.forEach(characteristicitem => {
+        if (characteristicitem.uuid === CMD_CHARAC_ID) {
+          console.log(
+            'writeCharacteristic: ',
+            JSON.stringify(characteristicitem),
+          );
+          setWriteCharacteristic(characteristicitem);
+        }
+      });
       bleManager.stopDeviceScan();
       startStreamingData(device);
     } catch (error) {
@@ -122,6 +137,7 @@ export default function useBle(): BluetoothLowEnergyApi {
       ToastAndroid.show('No Characteristic Found', ToastAndroid.SHORT);
       return;
     }
+    ToastAndroid.show('Success Detect Vibration', ToastAndroid.SHORT);
     setMonitoredData((prevState: number) => prevState + 1);
   };
 
@@ -137,6 +153,36 @@ export default function useBle(): BluetoothLowEnergyApi {
     }
   };
 
+  const intToBytes = (value: number) => {
+    return [
+      value & 0xff,
+      (value >> 8) & 0xff,
+      (value >> 16) & 0xff,
+      (value >> 24) & 0xff,
+    ];
+  };
+
+  const sendCommand = async (cmd: number, data: number[]) => {
+    if (!writeCharacteristic) {
+      Alert.alert('Write characteristic not found');
+      return;
+    }
+
+    const checksum = (data.reduce((sum, val) => sum + val, 0) + cmd) % 256;
+    const command = [0xaa, cmd, data.length + 4, ...data, checksum];
+
+    const encodedCommand = Buffer.from(command).toString('base64');
+    console.log('encodedCommand: ', encodedCommand);
+    await writeCharacteristic.writeWithResponse(encodedCommand);
+  };
+
+  const collectVibrationData = async () => {
+    const vibrationCommand = 0x01;
+    const data = intToBytes(3125);
+    console.log('data: ', data);
+    await sendCommand(vibrationCommand, data);
+  };
+
   return {
     requestPermissions,
     scanForDevices,
@@ -146,5 +192,6 @@ export default function useBle(): BluetoothLowEnergyApi {
     connectedDevice,
     monitoredData,
     setMonitoredData,
+    collectVibrationData,
   };
 }

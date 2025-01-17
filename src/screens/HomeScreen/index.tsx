@@ -14,6 +14,7 @@ const HomeScreen = () => {
     connectToDevice,
     connectedDevice,
     monitoredData,
+    collectVibrationData,
   } = useBle();
 
   const onScanDevices = async () => {
@@ -58,6 +59,12 @@ const HomeScreen = () => {
       </View>
       <View style={styles.buttonContainer}>
         <Button title="Scan Devices" onPress={onScanDevices} />
+        <View style={{height: 16}} />
+        <Button
+          title="Collect Vibration Data"
+          onPress={collectVibrationData}
+          disabled={!connectedDevice}
+        />
       </View>
     </>
   );
