@@ -43,6 +43,7 @@ export default function useBle(): BluetoothLowEnergyApi {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [monitoredData, setMonitoredData] = useState(1);
   const [writeCharacteristic, setWriteCharacteristic] = useState(null);
+  const [readCharacteristic, setReadCharacteristic] = useState(null);
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -117,6 +118,10 @@ export default function useBle(): BluetoothLowEnergyApi {
             JSON.stringify(characteristicitem),
           );
           setWriteCharacteristic(characteristicitem);
+        }
+        if (characteristicitem.uuid === DATA_CHARAC_ID) {
+          console.log('readCharacteristic: ', JSON.stringify(characteristicitem));
+          setReadCharacteristic(characteristicitem);
         }
       });
       bleManager.stopDeviceScan();
