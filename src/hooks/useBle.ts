@@ -45,6 +45,10 @@ export default function useBle(): BluetoothLowEnergyApi {
   const [writeCharacteristic, setWriteCharacteristic] = useState(null);
   const [readCharacteristic, setReadCharacteristic] = useState(null);
 
+  let percentage = 0;
+  let waveDataT = {};
+  let resciveData = [];
+
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
     console.log('apiLevel: ', apiLevel);
@@ -120,11 +124,15 @@ export default function useBle(): BluetoothLowEnergyApi {
           setWriteCharacteristic(characteristicitem);
         }
         if (characteristicitem.uuid === DATA_CHARAC_ID) {
-          console.log('readCharacteristic: ', JSON.stringify(characteristicitem));
+          console.log(
+            'readCharacteristic: ',
+            JSON.stringify(characteristicitem),
+          );
           setReadCharacteristic(characteristicitem);
         }
       });
       bleManager.stopDeviceScan();
+      console.log('Habis write nih boy');
       startStreamingData(device);
     } catch (error) {
       Alert.alert('Error Connecting Device', JSON.stringify(error));
@@ -158,13 +166,139 @@ export default function useBle(): BluetoothLowEnergyApi {
     }
   };
 
-  const intToBytes = (value: number) => {
-    return [
-      value & 0xff,
-      (value >> 8) & 0xff,
-      (value >> 16) & 0xff,
-      (value >> 24) & 0xff,
-    ];
+  // const intToBytes = (value: number) => {
+  //   return [
+  //     value & 0xff,
+  //     (value >> 8) & 0xff,
+  //     (value >> 16) & 0xff,
+  //     (value >> 24) & 0xff,
+  //   ];
+  // };
+
+  const intToBytes = (num: number) => {
+    const bytes: number[] = [];
+    bytes.push((num >> 24) & 0xff);
+    bytes.push((num >> 16) & 0xff);
+    bytes.push((num >> 8) & 0xff);
+    bytes.push(num & 0xff);
+    return bytes;
+  };
+
+  const sendData = (cmd: number, data: number[]): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (writeCharacteristic) {
+        reject(new Error('No write characteristic available.'));
+        return;
+      }
+      console.log('Begin writing data');
+
+      const nowSendData = [0xaa, cmd, data.length + 4, ...data];
+      let cs = 0;
+
+      nowSendData.forEach(p => {
+        cs = (cs + p) % 256;
+      });
+
+      cs = 256 - cs;
+
+      const finalData = [...nowSendData, cs];
+      const buffer = Buffer.from(finalData);
+
+      writeCharacteristic
+        ?.writeWithResponse(buffer.toString('base64'))
+        .then(() => {
+          console.log('Finished writing data');
+          resolve();
+        })
+        .catch(err =>
+          reject(new Error('Error writing data to characteristic: ' + err)),
+        );
+    });
+  };
+
+  const collectData = (
+    val: number,
+    samp: number,
+    nowLength: number,
+    nowFreq: number,
+  ) => {
+    console.log('Begin collecting data');
+    const data: number[] = [];
+    const now = new Date();
+    const formatted = now.toISOString().slice(0, 19).replace(/[-T:]/g, ''); // YYYYMMDDHHMMSS
+
+    console.log(now);
+
+    const startCollect = {
+      systemTime: {
+        Y: formatted.substring(0, 2),
+        y: formatted.substring(2, 4),
+        M: formatted.substring(4, 6),
+        d: formatted.substring(6, 8),
+        H: formatted.substring(8, 10),
+        m: formatted.substring(10, 12),
+        s: formatted.substring(12),
+      },
+      isIntvSample: 0,
+      mdefLen: {
+        x: nowLength,
+        z: nowLength,
+        y: nowLength,
+      },
+      mdefFreq: {
+        x: nowFreq,
+        z: nowFreq,
+        y: nowFreq,
+      },
+      meaIntv: 1,
+      lwLength: 128,
+      lwFreq: 1000,
+      lwIntv: 1,
+      isSampleInd: val,
+      indLength: 1,
+      indFreq: 500,
+      indIntv: 1,
+      sampleDir: samp,
+    };
+
+    // Push system time
+    data.push(parseInt(startCollect.systemTime.Y, 10));
+    data.push(parseInt(startCollect.systemTime.y, 10));
+    data.push(parseInt(startCollect.systemTime.M, 10));
+    data.push(parseInt(startCollect.systemTime.d, 10));
+    data.push(parseInt(startCollect.systemTime.H, 10));
+    data.push(parseInt(startCollect.systemTime.m, 10));
+    data.push(parseInt(startCollect.systemTime.s, 10));
+
+    // Append other values to data
+    data.push(startCollect.isIntvSample);
+
+    // Append length data for each axis
+    data.push(...intToBytes(startCollect.mdefLen.x));
+    data.push(...intToBytes(startCollect.mdefLen.z));
+    data.push(...intToBytes(startCollect.mdefLen.y));
+
+    // Append frequency data for each axis
+    data.push(...intToBytes(startCollect.mdefFreq.x));
+    data.push(...intToBytes(startCollect.mdefFreq.z));
+    data.push(...intToBytes(startCollect.mdefFreq.y));
+
+    // Append other settings
+    data.push(...intToBytes(startCollect.meaIntv));
+    data.push(...intToBytes(startCollect.lwLength));
+    data.push(...intToBytes(startCollect.lwFreq));
+    data.push(...intToBytes(startCollect.lwIntv));
+
+    // Append sample indication, length, and frequency
+    data.push(startCollect.isSampleInd);
+    data.push(...intToBytes(startCollect.indLength));
+    data.push(...intToBytes(startCollect.indFreq));
+    data.push(...intToBytes(startCollect.indIntv));
+    data.push(startCollect.sampleDir);
+
+    console.log(val, ' ', JSON.stringify(data));
+
+    return sendData(0x01, data);
   };
 
   const sendCommand = async (cmd: number, data: number[]) => {
@@ -182,10 +316,11 @@ export default function useBle(): BluetoothLowEnergyApi {
   };
 
   const collectVibrationData = async () => {
-    const vibrationCommand = 0x01;
-    const data = intToBytes(3125);
-    console.log('data: ', data);
-    await sendCommand(vibrationCommand, data);
+    console.log('Begin collecting vibration data');
+    percentage = 0;
+    waveDataT = {};
+    resciveData = Array(242).fill(0); // Initialize an array with 242 zeros
+    await collectData(0, 3, 8, 3125);
   };
 
   return {
