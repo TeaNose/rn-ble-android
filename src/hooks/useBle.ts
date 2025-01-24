@@ -178,13 +178,13 @@ export default function useBle(): BluetoothLowEnergyApi {
   //   ];
   // };
 
-  const intToBytes = (num: number) => {
-    const bytes: number[] = [];
-    bytes.push((num >> 24) & 0xff);
-    bytes.push((num >> 16) & 0xff);
-    bytes.push((num >> 8) & 0xff);
-    bytes.push(num & 0xff);
-    return bytes;
+  const intToBytes = (value: number) => {
+    return [
+      value & 0xff,
+      (value >> 8) & 0xff,
+      (value >> 16) & 0xff,
+      (value >> 24) & 0xff,
+    ];
   };
 
   const sendData = (cmd: number, data: number[]): Promise<void> => {
@@ -206,8 +206,9 @@ export default function useBle(): BluetoothLowEnergyApi {
       cs = 256 - cs;
 
       const finalData = [...nowSendData, cs];
+      console.log('finalData: ', JSON.stringify(finalData));
       const buffer = Buffer.from(finalData);
-      console.log('SAMPAI SINI');
+      console.log('buffer: ', buffer);
 
       writeCharacteristic
         ?.writeWithResponse(buffer.toString('base64'))
@@ -231,6 +232,7 @@ export default function useBle(): BluetoothLowEnergyApi {
     const data: number[] = [];
     const now = new Date();
     const formatted = now.toISOString().slice(0, 19).replace(/[-T:]/g, ''); // YYYYMMDDHHMMSS
+    // const formatted = '20250124090206';
 
     console.log(now);
 
@@ -266,7 +268,6 @@ export default function useBle(): BluetoothLowEnergyApi {
       sampleDir: samp,
     };
 
-    // Push system time
     data.push(parseInt(startCollect.systemTime.Y, 10));
     data.push(parseInt(startCollect.systemTime.y, 10));
     data.push(parseInt(startCollect.systemTime.M, 10));
@@ -274,32 +275,35 @@ export default function useBle(): BluetoothLowEnergyApi {
     data.push(parseInt(startCollect.systemTime.H, 10));
     data.push(parseInt(startCollect.systemTime.m, 10));
     data.push(parseInt(startCollect.systemTime.s, 10));
-
-    // Append other values to data
     data.push(startCollect.isIntvSample);
+    // console.log('1: ', JSON.stringify(data));
 
     // Append length data for each axis
     data.push(...intToBytes(startCollect.mdefLen.x));
     data.push(...intToBytes(startCollect.mdefLen.z));
     data.push(...intToBytes(startCollect.mdefLen.y));
+    // console.log('2: ', JSON.stringify(data));
 
     // Append frequency data for each axis
     data.push(...intToBytes(startCollect.mdefFreq.x));
     data.push(...intToBytes(startCollect.mdefFreq.z));
     data.push(...intToBytes(startCollect.mdefFreq.y));
+    // console.log('3: ', JSON.stringify(data));
 
-    // Append other settings
+    // Append measurement interval, long waveform length and frequency
     data.push(...intToBytes(startCollect.meaIntv));
     data.push(...intToBytes(startCollect.lwLength));
     data.push(...intToBytes(startCollect.lwFreq));
     data.push(...intToBytes(startCollect.lwIntv));
+    // console.log('4: ', JSON.stringify(data));
 
-    // Append sample indication, length, and frequency
+    // Append sample indication, sample length and frequency
     data.push(startCollect.isSampleInd);
     data.push(...intToBytes(startCollect.indLength));
     data.push(...intToBytes(startCollect.indFreq));
     data.push(...intToBytes(startCollect.indIntv));
     data.push(startCollect.sampleDir);
+    // console.log('5: ', JSON.stringify(data));
 
     console.log(val, ' ', JSON.stringify(data));
 
