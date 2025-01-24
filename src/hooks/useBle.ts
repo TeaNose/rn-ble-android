@@ -190,7 +190,7 @@ export default function useBle(): BluetoothLowEnergyApi {
   const sendData = (cmd: number, data: number[]): Promise<void> => {
     return new Promise((resolve, reject) => {
       console.log('writecharacteristic tinus: ', writeCharacteristic);
-      if (writeCharacteristic) {
+      if (!writeCharacteristic) {
         reject(new Error('No write characteristic available.'));
         return;
       }
