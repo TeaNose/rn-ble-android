@@ -44,6 +44,7 @@ export default function useBle(): BluetoothLowEnergyApi {
   const [monitoredData, setMonitoredData] = useState(1);
   const [writeCharacteristic, setWriteCharacteristic] = useState(null);
   const [readCharacteristic, setReadCharacteristic] = useState(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   let percentage = 0;
   let waveDataT = {};
@@ -155,7 +156,9 @@ export default function useBle(): BluetoothLowEnergyApi {
   };
 
   const startStreamingData = async (device: Device) => {
-    if (device) {
+    console.log('isSubscribed: ', isSubscribed);
+    if (device && !isSubscribed) {
+      setIsSubscribed(true);
       device.monitorCharacteristicForService(
         SERVICE_ID,
         DATA_CHARAC_ID,
@@ -186,6 +189,7 @@ export default function useBle(): BluetoothLowEnergyApi {
 
   const sendData = (cmd: number, data: number[]): Promise<void> => {
     return new Promise((resolve, reject) => {
+      console.log('writecharacteristic tinus: ', writeCharacteristic);
       if (writeCharacteristic) {
         reject(new Error('No write characteristic available.'));
         return;
@@ -203,6 +207,7 @@ export default function useBle(): BluetoothLowEnergyApi {
 
       const finalData = [...nowSendData, cs];
       const buffer = Buffer.from(finalData);
+      console.log('SAMPAI SINI');
 
       writeCharacteristic
         ?.writeWithResponse(buffer.toString('base64'))
@@ -320,7 +325,7 @@ export default function useBle(): BluetoothLowEnergyApi {
     percentage = 0;
     waveDataT = {};
     resciveData = Array(242).fill(0); // Initialize an array with 242 zeros
-    await collectData(0, 3, 8, 3125);
+    await collectData(2, 0, 0, 3125);
   };
 
   return {
