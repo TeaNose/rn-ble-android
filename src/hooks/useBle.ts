@@ -42,13 +42,13 @@ export default function useBle(): BluetoothLowEnergyApi {
   const [isScanningDevice, setIsScanningDevice] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [monitoredData, setMonitoredData] = useState(1);
-  const [writeCharacteristic, setWriteCharacteristic] = useState(null);
+  const [writeCharacteristic, setWriteCharacteristic] = useState<any>(null);
   const [readCharacteristic, setReadCharacteristic] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  let percentage = 0;
-  let waveDataT = {};
-  let resciveData = [];
+  // let percentage = 0;
+  // let waveDataT = {};
+  // let resciveData = [];
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
