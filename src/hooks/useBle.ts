@@ -155,17 +155,16 @@ export default function useBle(): BluetoothLowEnergyApi {
       ToastAndroid.show('No Characteristic Found', ToastAndroid.SHORT);
       return;
     }
-    ToastAndroid.show('Success Detect Vibration', ToastAndroid.SHORT);
+    // ToastAndroid.show('Success Detect Vibration', ToastAndroid.SHORT);
     setMonitoredData((prevState: number) => prevState + 1);
 
     const vibrationData = Buffer.from(characteristic.value, 'base64');
-    console.log('Vibration data received:', vibrationData);
+    // console.log('Vibration data received:', vibrationData);
 
     handleData(vibrationData);
   };
 
   const startStreamingData = async (device: Device) => {
-    console.log('isSubscribed: ', isSubscribed);
     if (device && !isSubscribed) {
       setIsSubscribed(true);
       device.monitorCharacteristicForService(
@@ -220,9 +219,9 @@ export default function useBle(): BluetoothLowEnergyApi {
       cs = 256 - cs;
 
       const finalData = [...nowSendData, cs];
-      console.log('finalData: ', JSON.stringify(finalData));
+      // console.log('finalData: ', JSON.stringify(finalData));
       const buffer = Buffer.from(finalData).toString('base64');
-      console.log('buffer: ', buffer);
+      // console.log('buffer: ', buffer);
 
       writeCharacteristic
         ?.writeWithResponse(buffer)
@@ -268,7 +267,7 @@ export default function useBle(): BluetoothLowEnergyApi {
     const formatted = now.toISOString().slice(0, 19).replace(/[-T:]/g, ''); // YYYYMMDDHHMMSS
     // const formatted = '20250124090206';
 
-    console.log(now);
+    // console.log(now);
 
     const startCollect = {
       systemTime: {
@@ -339,7 +338,7 @@ export default function useBle(): BluetoothLowEnergyApi {
     data.push(startCollect.sampleDir);
     // console.log('5: ', JSON.stringify(data));
 
-    console.log(val, ' ', JSON.stringify(data));
+    // console.log(val, ' ', JSON.stringify(data));
 
     return sendData(0x01, data);
   };
@@ -375,8 +374,8 @@ export default function useBle(): BluetoothLowEnergyApi {
       case 0x06: {
         const dp = data.slice(3, data[2]);
         // Process received data
-        // this._transIndexData(dp);
-        console.log('0x06', JSON.stringify(dp));
+        _transIndexData(dp);
+        // console.log('0x06', JSON.stringify(dp));
         break;
       }
       case 0x05: {
@@ -463,7 +462,8 @@ export default function useBle(): BluetoothLowEnergyApi {
     percentage = 0;
     waveDataT = {};
     resciveData = Array(242).fill(0); // Initialize an array with 242 zeros
-    await collectData(2, 0, 0, 3125);
+    await collectData(1, 0, 0, 1000);
+    // await collectData(2, 0, 0, 3125);
   };
 
   return {
