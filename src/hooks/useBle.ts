@@ -1,3 +1,4 @@
+/* eslint-disable no-bitwise */
 import {useState} from 'react';
 import {Alert, PermissionsAndroid, ToastAndroid} from 'react-native';
 import {
@@ -46,9 +47,9 @@ export default function useBle(): BluetoothLowEnergyApi {
   const [readCharacteristic, setReadCharacteristic] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // let percentage = 0;
-  // let waveDataT = {};
-  // let resciveData = [];
+  let percentage = 0;
+  let waveDataT = {};
+  let resciveData = [];
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -133,6 +134,9 @@ export default function useBle(): BluetoothLowEnergyApi {
         }
       });
       bleManager.stopDeviceScan();
+
+      await bleManager.requestMTUForDevice(device?.id, 512); // tambah ini
+
       console.log('Habis write nih boy');
       startStreamingData(device);
     } catch (error) {
@@ -142,7 +146,7 @@ export default function useBle(): BluetoothLowEnergyApi {
 
   const onDetectData = (
     error: BleError | null,
-    characteristic: Characteristic | null,
+    characteristic: Characteristic | any,
   ) => {
     if (error) {
       Alert.alert('Error Detecting Data', JSON.stringify(error));
@@ -153,6 +157,11 @@ export default function useBle(): BluetoothLowEnergyApi {
     }
     ToastAndroid.show('Success Detect Vibration', ToastAndroid.SHORT);
     setMonitoredData((prevState: number) => prevState + 1);
+
+    const vibrationData = Buffer.from(characteristic.value, 'base64');
+    console.log('Vibration data received:', vibrationData);
+
+    handleData(vibrationData);
   };
 
   const startStreamingData = async (device: Device) => {
@@ -169,15 +178,6 @@ export default function useBle(): BluetoothLowEnergyApi {
     }
   };
 
-  // const intToBytes = (value: number) => {
-  //   return [
-  //     value & 0xff,
-  //     (value >> 8) & 0xff,
-  //     (value >> 16) & 0xff,
-  //     (value >> 24) & 0xff,
-  //   ];
-  // };
-
   const intToBytes = (value: number) => {
     return [
       value & 0xff,
@@ -187,9 +187,23 @@ export default function useBle(): BluetoothLowEnergyApi {
     ];
   };
 
+  // / Helper function to convert a byte array to an integer
+  function bytesToInt(bytes: any) {
+    return bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
+  }
+
+  // Helper function to convert a byte array to a float
+  function bytesToFloat(bytes: any) {
+    // console.log(bytes)
+    const intValue = bytesToInt(bytes);
+
+    const buffer = Buffer.alloc(4);
+    buffer.writeInt32LE(intValue, 0);
+    return buffer.readFloatLE(0);
+  }
+
   const sendData = (cmd: number, data: number[]): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      console.log('writecharacteristic tinus: ', writeCharacteristic);
+    return new Promise(async (resolve, reject) => {
       if (!writeCharacteristic) {
         reject(new Error('No write characteristic available.'));
         return;
@@ -207,19 +221,39 @@ export default function useBle(): BluetoothLowEnergyApi {
 
       const finalData = [...nowSendData, cs];
       console.log('finalData: ', JSON.stringify(finalData));
-      const buffer = Buffer.from(finalData);
+      const buffer = Buffer.from(finalData).toString('base64');
       console.log('buffer: ', buffer);
 
       writeCharacteristic
-        ?.writeWithResponse(buffer.toString('base64'))
+        ?.writeWithResponse(buffer)
         .then(() => {
           console.log('Finished writing data');
           resolve();
         })
-        .catch(err =>
+        .catch((err: any) =>
           reject(new Error('Error writing data to characteristic: ' + err)),
         );
     });
+
+    // const mtuSize = 20; // Adjust based on your device's MTU
+    // const chunkedData = [];
+    // for (let i = 0; i < finalData.length; i += mtuSize) {
+    //   chunkedData.push(finalData.slice(i, i + mtuSize));
+    // }
+
+    // for (const chunk of chunkedData) {
+    //   const buffer = Buffer.from(chunk);
+    //   try {
+    //     await writeCharacteristic.writeWithResponse(
+    //       buffer.toString('base64'),
+    //     );
+    //     console.log('Chunk written successfully:', chunk);
+    //   } catch (err) {
+    //     console.error('Error writing chunk:', chunk, err);
+    //     break;
+    //   }
+    // }
+    // });
   };
 
   const collectData = (
@@ -310,18 +344,118 @@ export default function useBle(): BluetoothLowEnergyApi {
     return sendData(0x01, data);
   };
 
-  const sendCommand = async (cmd: number, data: number[]) => {
-    if (!writeCharacteristic) {
-      Alert.alert('Write characteristic not found');
+  const handleData = (data: any) => {
+    console.log('Data received:', data[1]);
+    // Add handling logic here as per your application needs
+
+    let allVal = 0;
+    data.forEach((item: any) => {
+      allVal += item % 256;
+    });
+    if (allVal % 256 !== 0) {
+      console.log('======Bluetooth data error, trying again:', allVal);
       return;
     }
 
-    const checksum = (data.reduce((sum, val) => sum + val, 0) + cmd) % 256;
-    const command = [0xaa, cmd, data.length + 4, ...data, checksum];
+    switch (data[1]) {
+      case 0x04: {
+        const dp = data.slice(3);
+        // Process received data
+        // const wave = this._transWaveData(dp);
+        console.log('0x04', JSON.stringify(dp));
 
-    const encodedCommand = Buffer.from(command).toString('base64');
-    console.log('encodedCommand: ', encodedCommand);
-    await writeCharacteristic.writeWithResponse(encodedCommand);
+        // if (wave) {
+        //   this.waveDataT[wave.index] = wave;
+        //   this.percentage =
+        //     (Object.keys(this.waveDataT).length * 100) / wave.count;
+        //   //console.log(this.percentage)
+        // }
+        break;
+      }
+      case 0x06: {
+        const dp = data.slice(3, data[2]);
+        // Process received data
+        // this._transIndexData(dp);
+        console.log('0x06', JSON.stringify(dp));
+        break;
+      }
+      case 0x05: {
+        // if (!this.waveDataT) {
+        //   return;
+        // }
+        // Object.keys(this.waveDataT).forEach(key => {
+        //   const p = this.waveDataT[key];
+        //   this.resciveData[Math.floor(p.index / 8)] =
+        //     this.resciveData[Math.floor(p.index / 8)] | this.statu[p.index % 8];
+        // });
+
+        console.log('wahyu');
+        const dp = data.slice(3, data[2]);
+
+        _transIndexData(dp);
+
+        // this.sendData(0x05, this.resciveData);
+        // if (this.percentage < 100) {
+        //   return;
+        // }
+        // this._processWaveData();
+        break;
+      }
+      default:
+        // Handle unknown command
+        console.warn(`Unknown command received: ${data[1]}`);
+    }
+  };
+
+  const _transIndexData = (dp: any) => {
+    if (dp.length < 35) {
+      console.log('The index data received is too short to process.');
+      return null;
+    }
+    try {
+      const Y = dp[0];
+      const y = dp[1];
+      const M = dp[2];
+      const d = dp[3];
+      const H = dp[4];
+      const m = dp[5];
+      const s = dp[6];
+
+      // console.log(JSON.stringify(dp.slice(7, 11)))
+      const highAccRms = bytesToFloat(dp.slice(7, 11));
+      const lowAccRms = bytesToFloat(dp.slice(11, 15));
+      const velRms = bytesToFloat(dp.slice(15, 19));
+      // console.log(dp.slice(19, 23))
+      const tem = bytesToFloat(dp.slice(19, 23));
+      const U = bytesToFloat(dp.slice(23, 27));
+      const I = bytesToFloat(dp.slice(27, 31));
+      const R = bytesToFloat(dp.slice(31, 35));
+
+      console.log('======highAccRms', highAccRms);
+      console.log('======lowAccRms', lowAccRms);
+      console.log('======velRms', velRms);
+      console.log('======tem', tem);
+
+      return {
+        Y,
+        y,
+        M,
+        d,
+        H,
+        m,
+        s,
+        highAccRms,
+        lowAccRms,
+        velRms,
+        tem,
+        U,
+        I,
+        R,
+      };
+    } catch (error) {
+      console.log('There was an error when trying to parse index data', error);
+      return null;
+    }
   };
 
   const collectVibrationData = async () => {
