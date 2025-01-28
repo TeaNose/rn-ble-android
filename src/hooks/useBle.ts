@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-bitwise */
 import {useState} from 'react';
 import {Alert, PermissionsAndroid, ToastAndroid} from 'react-native';
@@ -38,18 +39,19 @@ interface BluetoothLowEnergyApi {
   setMonitoredData: (value: number) => void;
 }
 
-export default function useBle(): BluetoothLowEnergyApi {
+export default function useBle() {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [isScanningDevice, setIsScanningDevice] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
-  const [monitoredData, setMonitoredData] = useState(1);
+  const [monitoredData, setMonitoredData] = useState(0);
   const [writeCharacteristic, setWriteCharacteristic] = useState<any>(null);
   const [readCharacteristic, setReadCharacteristic] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isDisableStopBtn, setIsDisableStopBtn] = useState(true);
 
-  let percentage = 0;
-  let waveDataT = {};
-  let resciveData = [];
+  // let percentage = 0;
+  // let waveDataT = {};
+  // let resciveData = [];
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -117,7 +119,7 @@ export default function useBle(): BluetoothLowEnergyApi {
       const characteristic = await deviceConnection.characteristicsForService(
         SERVICE_ID,
       );
-      characteristic.forEach(characteristicitem => {
+      characteristic.forEach((characteristicitem: any) => {
         if (characteristicitem.uuid === CMD_CHARAC_ID) {
           console.log(
             'writeCharacteristic: ',
@@ -135,7 +137,7 @@ export default function useBle(): BluetoothLowEnergyApi {
       });
       bleManager.stopDeviceScan();
 
-      await bleManager.requestMTUForDevice(device?.id, 512); // tambah ini
+      await bleManager.requestMTUForDevice(device?.id, 512); //!!!!!!!!!!!!! tambah ini
 
       console.log('Habis write nih boy');
       startStreamingData(device);
@@ -457,13 +459,23 @@ export default function useBle(): BluetoothLowEnergyApi {
     }
   };
 
+  const stopCollectTmpData = async () => {
+    console.log('Stop Collecting Data');
+
+    setIsDisableStopBtn(true);
+    await collectData(4, 0, 0, 1000);
+  };
+
   const collectVibrationData = async () => {
-    console.log('Begin collecting vibration data');
-    percentage = 0;
-    waveDataT = {};
-    resciveData = Array(242).fill(0); // Initialize an array with 242 zeros
-    await collectData(1, 0, 0, 1000);
-    // await collectData(2, 0, 0, 3125);
+    // percentage = 0;
+    // waveDataT = {};
+    // resciveData = Array(242).fill(0); // Initialize an array with 242 zeros
+
+    setIsDisableStopBtn(false);
+
+    setMonitoredData(0);
+    // await collectData(1, 0, 0, 1000);
+    await collectData(2, 0, 0, 3125);
   };
 
   return {
@@ -476,5 +488,7 @@ export default function useBle(): BluetoothLowEnergyApi {
     monitoredData,
     setMonitoredData,
     collectVibrationData,
+    stopCollectTmpData,
+    isDisableStopBtn,
   };
 }

@@ -40,6 +40,9 @@ const styles = StyleSheet.create({
   data: {
     marginBottom: 4,
   },
+  containerBtnStopCollecting: {
+    marginVertical: 20,
+  },
 });
 
 export default styles;

@@ -9,12 +9,14 @@ const HomeScreen = () => {
   const {
     requestPermissions,
     scanForDevices,
+    stopCollectTmpData,
     allDevices,
     isScanningDevice,
     connectToDevice,
     connectedDevice,
     monitoredData,
     collectVibrationData,
+    isDisableStopBtn,
   } = useBle();
 
   const onScanDevices = async () => {
@@ -59,12 +61,20 @@ const HomeScreen = () => {
       </View>
       <View style={styles.buttonContainer}>
         <Button title="Scan Devices" onPress={onScanDevices} />
-        <View style={{height: 16}} />
+        <View style={{height: 10}} />
         <Button
           title="Collect Vibration Data"
           onPress={collectVibrationData}
           disabled={!connectedDevice}
         />
+        <View style={styles.containerBtnStopCollecting}>
+          <Button
+            title="Stop Collect Data"
+            onPress={stopCollectTmpData}
+            disabled={isDisableStopBtn}
+            color={'red'}
+          />
+        </View>
       </View>
     </>
   );
