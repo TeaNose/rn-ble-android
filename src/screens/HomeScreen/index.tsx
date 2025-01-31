@@ -1,5 +1,7 @@
+/* eslint-disable react-native/no-inline-styles */
 import React from 'react';
-import {View, Text, Button, ActivityIndicator} from 'react-native';
+import {View, Text, Button, ActivityIndicator, Dimensions} from 'react-native';
+import {LineChart} from 'react-native-chart-kit';
 
 import styles from './styles';
 import useBle from '../../hooks/useBle';
@@ -17,7 +19,10 @@ const HomeScreen = () => {
     monitoredData,
     collectVibrationData,
     isDisableStopBtn,
+    receivedData,
   } = useBle();
+
+  const WIDTH = Dimensions.get('screen').width - 35;
 
   const onScanDevices = async () => {
     requestPermissions((isGranted: boolean) => {
@@ -57,6 +62,42 @@ const HomeScreen = () => {
               style={styles.data}>{`Device ID: ${connectedDevice?.id}`}</Text>
             <Text>{`Data: ${monitoredData}`}</Text>
           </View>
+        )}
+
+        {receivedData.length !== 0 && (
+          <LineChart
+            width={WIDTH}
+            height={300}
+            withInnerLines={false}
+            data={{
+              labels: [],
+              datasets: [
+                {data: receivedData, color: () => 'blue', strokeWidth: 2},
+              ],
+            }}
+            // yAxisLabel="$"
+            chartConfig={{
+              backgroundColor: '#e26a00',
+              backgroundGradientFrom: '#fb8c00',
+              backgroundGradientTo: '#ffa726',
+              decimalPlaces: 2,
+              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              style: {
+                borderRadius: 16,
+              },
+              propsForDots: {
+                r: '6',
+                strokeWidth: '2',
+                stroke: '#ffa726',
+              },
+            }}
+            bezier
+            style={{
+              marginVertical: 8,
+              borderRadius: 16,
+            }}
+          />
         )}
       </View>
       <View style={styles.buttonContainer}>

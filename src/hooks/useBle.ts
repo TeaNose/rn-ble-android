@@ -48,6 +48,7 @@ export default function useBle() {
   const [readCharacteristic, setReadCharacteristic] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isDisableStopBtn, setIsDisableStopBtn] = useState(true);
+  const [receivedData, setReceivedData] = useState<number[]>([]);
 
   // let percentage = 0;
   // let waveDataT = {};
@@ -121,10 +122,6 @@ export default function useBle() {
       );
       characteristic.forEach((characteristicitem: any) => {
         if (characteristicitem.uuid === CMD_CHARAC_ID) {
-          console.log(
-            'writeCharacteristic: ',
-            JSON.stringify(characteristicitem),
-          );
           setWriteCharacteristic(characteristicitem);
         }
         if (characteristicitem.uuid === DATA_CHARAC_ID) {
@@ -432,6 +429,12 @@ export default function useBle() {
       const I = bytesToFloat(dp.slice(27, 31));
       const R = bytesToFloat(dp.slice(31, 35));
 
+      // setReceivedData(prevReceivedData => [...prevReceivedData, tem]);
+      setReceivedData(prevReceivedData => [
+        ...prevReceivedData,
+        Math.round(velRms),
+      ]);
+
       console.log('======highAccRms', highAccRms);
       console.log('======lowAccRms', lowAccRms);
       console.log('======velRms', velRms);
@@ -481,6 +484,7 @@ export default function useBle() {
   return {
     requestPermissions,
     scanForDevices,
+
     allDevices,
     isScanningDevice,
     connectToDevice,
@@ -490,5 +494,6 @@ export default function useBle() {
     collectVibrationData,
     stopCollectTmpData,
     isDisableStopBtn,
+    receivedData,
   };
 }
