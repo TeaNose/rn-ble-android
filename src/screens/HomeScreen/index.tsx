@@ -20,6 +20,7 @@ const HomeScreen = () => {
     collectVibrationData,
     isDisableStopBtn,
     receivedData,
+    disconnectDevice,
   } = useBle();
 
   const WIDTH = Dimensions.get('screen').width - 35;
@@ -47,7 +48,16 @@ const HomeScreen = () => {
               <Text>{device?.name}</Text>
             </View>
             <View style={styles.connectButtonContainer}>
-              <Button title="Connect" onPress={() => connectToDevice(device)} />
+              <Button
+                title={
+                  connectedDevice?.id === device.id ? 'Disconnected' : 'Connect'
+                }
+                onPress={() =>
+                  connectedDevice?.id === device.id
+                    ? disconnectDevice(device.id)
+                    : connectToDevice(device)
+                }
+              />
             </View>
           </View>
         ))}
@@ -101,21 +111,30 @@ const HomeScreen = () => {
         )}
       </View>
       <View style={styles.buttonContainer}>
-        <Button title="Scan Devices" onPress={onScanDevices} />
-        <View style={{height: 10}} />
         <Button
-          title="Collect Vibration Data"
-          onPress={collectVibrationData}
-          disabled={!connectedDevice}
+          title="Scan Devices"
+          onPress={onScanDevices}
+          disabled={!isDisableStopBtn}
         />
-        <View style={styles.containerBtnStopCollecting}>
-          <Button
-            title="Stop Collect Data"
-            onPress={stopCollectTmpData}
-            disabled={isDisableStopBtn}
-            color={'red'}
-          />
-        </View>
+        <View style={{height: 10}} />
+
+        {!!connectedDevice && (
+          <>
+            <Button
+              title="Collect Vibration Data"
+              onPress={collectVibrationData}
+              disabled={!isDisableStopBtn}
+            />
+            <View style={styles.containerBtnStopCollecting}>
+              <Button
+                title="Stop Collect Data"
+                onPress={stopCollectTmpData}
+                disabled={isDisableStopBtn}
+                color={'red'}
+              />
+            </View>
+          </>
+        )}
       </View>
     </>
   );

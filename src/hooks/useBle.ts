@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-bitwise */
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Alert, PermissionsAndroid, ToastAndroid} from 'react-native';
 import {
   BleError,
@@ -50,9 +50,9 @@ export default function useBle() {
   const [isDisableStopBtn, setIsDisableStopBtn] = useState(true);
   const [receivedData, setReceivedData] = useState<number[]>([]);
 
-  // let percentage = 0;
-  // let waveDataT = {};
-  // let resciveData = [];
+  // useEffect(() => {
+  //   disconnectDevice(connectedDevice?.id);
+  // }, []);
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -125,10 +125,6 @@ export default function useBle() {
           setWriteCharacteristic(characteristicitem);
         }
         if (characteristicitem.uuid === DATA_CHARAC_ID) {
-          console.log(
-            'readCharacteristic: ',
-            JSON.stringify(characteristicitem),
-          );
           setReadCharacteristic(characteristicitem);
         }
       });
@@ -137,9 +133,33 @@ export default function useBle() {
       await bleManager.requestMTUForDevice(device?.id, 512); //!!!!!!!!!!!!! tambah ini
 
       console.log('Habis write nih boy');
+
+      console.log({device});
       startStreamingData(device);
     } catch (error) {
       Alert.alert('Error Connecting Device', JSON.stringify(error));
+    }
+  };
+
+  const disconnectDevice = async (deviceId: any) => {
+    try {
+      const connectedDevices = await bleManager.connectedDevices([SERVICE_ID]);
+      console.log({connectedDevices});
+
+      const device = connectedDevices.find((dev: any) => dev.id === deviceId);
+
+      if (device) {
+        console.log(`Disconnecting from device: ${deviceId}`);
+
+        setConnectedDevice(null);
+        setIsSubscribed(false);
+        await bleManager.cancelDeviceConnection(deviceId);
+        console.log('Device disconnected successfully');
+      } else {
+        console.log('Device is not connected');
+      }
+    } catch (error) {
+      console.error('Error disconnecting device:', error);
     }
   };
 
@@ -148,7 +168,10 @@ export default function useBle() {
     characteristic: Characteristic | any,
   ) => {
     if (error) {
-      Alert.alert('Error Detecting Data', JSON.stringify(error));
+      ToastAndroid.show(
+        'Connection with device is Disconnected',
+        ToastAndroid.SHORT,
+      );
       return;
     } else if (!characteristic) {
       ToastAndroid.show('No Characteristic Found', ToastAndroid.SHORT);
@@ -495,5 +518,6 @@ export default function useBle() {
     stopCollectTmpData,
     isDisableStopBtn,
     receivedData,
+    disconnectDevice,
   };
 }
