@@ -21,6 +21,8 @@ const HomeScreen = () => {
     isDisableStopBtn,
     receivedData,
     disconnectDevice,
+    isBack,
+    setIsBack,
   } = useBle();
 
   const WIDTH = Dimensions.get('screen').width - 35;
@@ -36,7 +38,13 @@ const HomeScreen = () => {
   return (
     <>
       <View style={styles.container}>
-        <Text style={styles.title}>Available Device</Text>
+        <View>
+          <Text style={styles.title}>Available Device</Text>
+          <Button
+            title={isBack ? 'Untest' : 'TEst'}
+            onPress={() => setIsBack(!isBack)}
+          />
+        </View>
         {isScanningDevice && (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size={'small'} />

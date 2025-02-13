@@ -49,10 +49,13 @@ export default function useBle() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isDisableStopBtn, setIsDisableStopBtn] = useState(true);
   const [receivedData, setReceivedData] = useState<number[]>([]);
+  const [isBack, setIsBack] = useState(false);
 
-  // useEffect(() => {
-  //   disconnectDevice(connectedDevice?.id);
-  // }, []);
+  useEffect(() => {
+    return () => {
+      disconnectDevice(connectedDevice?.id);
+    };
+  }, [connectedDevice?.id]);
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -453,10 +456,20 @@ export default function useBle() {
       const R = bytesToFloat(dp.slice(31, 35));
 
       // setReceivedData(prevReceivedData => [...prevReceivedData, tem]);
-      setReceivedData(prevReceivedData => [
-        ...prevReceivedData,
-        Math.round(velRms),
-      ]);
+
+      if (isBack) {
+        console.log('hello world 222');
+        setReceivedData(prevReceivedData => [
+          ...prevReceivedData,
+          Math.round(tem),
+        ]);
+      } else {
+        console.log('hello world');
+        setReceivedData(prevReceivedData => [
+          ...prevReceivedData,
+          Math.round(tem === 0 ? velRms : tem),
+        ]);
+      }
 
       console.log('======highAccRms', highAccRms);
       console.log('======lowAccRms', lowAccRms);
@@ -493,15 +506,16 @@ export default function useBle() {
   };
 
   const collectVibrationData = async () => {
-    // percentage = 0;
-    // waveDataT = {};
-    // resciveData = Array(242).fill(0); // Initialize an array with 242 zeros
-
     setIsDisableStopBtn(false);
 
     setMonitoredData(0);
-    // await collectData(1, 0, 0, 1000);
-    await collectData(2, 0, 0, 3125);
+    setReceivedData([]);
+
+    if (isBack) {
+      await collectData(1, 0, 0, 1000);
+    } else {
+      await collectData(2, 0, 0, 3125);
+    }
   };
 
   return {
@@ -519,5 +533,7 @@ export default function useBle() {
     isDisableStopBtn,
     receivedData,
     disconnectDevice,
+    isBack,
+    setIsBack,
   };
 }
