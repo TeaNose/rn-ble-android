@@ -11,6 +11,7 @@ import {
 import DeviceInfo from 'react-native-device-info';
 import {PERMISSIONS} from 'react-native-permissions';
 import {Buffer} from 'buffer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type PermissionCallback = (result: boolean) => void;
 
@@ -19,14 +20,6 @@ const bleManager = new BleManager();
 const SERVICE_ID = 'b7ef1193-dc2e-4362-93d3-df429eb3ad10';
 const CMD_CHARAC_ID = '00ce7a72-ec08-473d-943e-81ec27fdc600';
 const DATA_CHARAC_ID = '00ce7a72-ec08-473d-943e-81ec27fdc5f2';
-
-// const SERVICE_ID = '0000fe40-cc7a-482a-984a-7f2ed5b3e512';
-// const DATA_CHARAC_ID = '0000fe42-cc7a-482a-984a-7f2ed5b3e512';
-
-// const CONNECTED_DEVICE_DUMMY = {
-//   id: 1,
-//   name: 'Test Device',
-// };
 
 interface BluetoothLowEnergyApi {
   requestPermissions(callback: PermissionCallback): Promise<void>;
@@ -51,15 +44,63 @@ export default function useBle() {
   const [receivedData, setReceivedData] = useState<number[]>([]);
   const [isBack, setIsBack] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      disconnectDevice(connectedDevice?.id);
-    };
-  }, [connectedDevice?.id]);
+  const reconnectToSavedDevice = async () => {
+    try {
+      // Retrieve the saved device ID from AsyncStorage
+      const savedDeviceId = await AsyncStorage.getItem(
+        'my-connected-device-id',
+      );
+
+      if (savedDeviceId) {
+        // Use the saved device ID to reconnect
+        const deviceConnection = await bleManager.connectToDevice(
+          savedDeviceId,
+        );
+
+        setIsSubscribed(false);
+        if (deviceConnection) {
+          // Successfully connected, now discover services and characteristics
+
+          setConnectedDevice(deviceConnection); // Store the connection state
+
+          // Discover all services and characteristics
+          await deviceConnection.discoverAllServicesAndCharacteristics();
+
+          const characteristics =
+            await deviceConnection.characteristicsForService(SERVICE_ID);
+
+          characteristics.forEach((characteristicitem: any) => {
+            if (characteristicitem.uuid === CMD_CHARAC_ID) {
+              setWriteCharacteristic(characteristicitem);
+            }
+            if (characteristicitem.uuid === DATA_CHARAC_ID) {
+              setReadCharacteristic(characteristicitem);
+            }
+          });
+
+          // Stop scanning if connected
+          bleManager.stopDeviceScan();
+
+          // Request MTU for device
+          await bleManager.requestMTUForDevice(savedDeviceId, 512);
+
+          startStreamingData(deviceConnection);
+        }
+      }
+    } catch (error) {
+      console.error('Error retrieving saved device:', error);
+    }
+  };
+
+  // useEffect(() => {
+  //   return () => {
+  //     disconnectDevice(connectedDevice?.id);
+  //   };
+  // }, [connectedDevice?.id]);
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
-    console.log('apiLevel: ', apiLevel);
+
     if (apiLevel < 31) {
       const grantedStatus = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
@@ -101,7 +142,12 @@ export default function useBle() {
         setIsScanningDevice(false);
         Alert.alert('Error Scanning Devices', String(error?.message));
       }
-      if (device && device?.name?.includes('DT_ZB_20703754')) {
+      if (
+        device &&
+        (device?.name?.includes('DT_ZB') || device?.name?.includes('DT_'))
+      ) {
+        reconnectToSavedDevice();
+
         setAllDevices(prevState => {
           if (!isDuplicateDevice(prevState, device)) {
             return [...prevState, device];
@@ -116,7 +162,19 @@ export default function useBle() {
 
   const connectToDevice = async (device: Device) => {
     try {
+      if (!device?.id) {
+        throw new Error('Device ID is missing');
+      }
+
+      // Check if connectToDevice is available
+      if (typeof bleManager.connectToDevice !== 'function') {
+        throw new Error('bleManager.connectToDevice is not a function');
+      }
+
       const deviceConnection = await bleManager.connectToDevice(device?.id);
+
+      await AsyncStorage.setItem('my-connected-device-id', String(device?.id)); // Save device info
+
       setConnectedDevice(deviceConnection);
       await deviceConnection.discoverAllServicesAndCharacteristics();
 
@@ -133,13 +191,11 @@ export default function useBle() {
       });
       bleManager.stopDeviceScan();
 
-      await bleManager.requestMTUForDevice(device?.id, 512); //!!!!!!!!!!!!! tambah ini
+      await bleManager.requestMTUForDevice(device?.id, 512); // Set MTU
 
-      console.log('Habis write nih boy');
-
-      console.log({device});
       startStreamingData(device);
     } catch (error) {
+      console.error('Error connecting to device:', error);
       Alert.alert('Error Connecting Device', JSON.stringify(error));
     }
   };
@@ -147,16 +203,16 @@ export default function useBle() {
   const disconnectDevice = async (deviceId: any) => {
     try {
       const connectedDevices = await bleManager.connectedDevices([SERVICE_ID]);
-      console.log({connectedDevices});
 
       const device = connectedDevices.find((dev: any) => dev.id === deviceId);
 
       if (device) {
-        console.log(`Disconnecting from device: ${deviceId}`);
-
         setConnectedDevice(null);
         setIsSubscribed(false);
+
         await bleManager.cancelDeviceConnection(deviceId);
+        await AsyncStorage.removeItem('my-connected-device-id');
+
         console.log('Device disconnected successfully');
       } else {
         console.log('Device is not connected');
@@ -192,11 +248,16 @@ export default function useBle() {
   const startStreamingData = async (device: Device) => {
     if (device && !isSubscribed) {
       setIsSubscribed(true);
-      device.monitorCharacteristicForService(
-        SERVICE_ID,
-        DATA_CHARAC_ID,
-        onDetectData,
-      );
+
+      if (device?.monitorCharacteristicForService) {
+        device.monitorCharacteristicForService(
+          SERVICE_ID,
+          DATA_CHARAC_ID,
+          onDetectData,
+        );
+      } else {
+        console.error('monitorCharacteristicForService is not available');
+      }
     } else {
       ToastAndroid.show('No Device Connected', ToastAndroid.SHORT);
     }

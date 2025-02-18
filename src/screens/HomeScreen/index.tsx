@@ -1,6 +1,13 @@
 /* eslint-disable react-native/no-inline-styles */
 import React from 'react';
-import {View, Text, Button, ActivityIndicator, Dimensions} from 'react-native';
+import {
+  View,
+  Text,
+  Button,
+  ActivityIndicator,
+  Dimensions,
+  TouchableOpacity,
+} from 'react-native';
 import {LineChart} from 'react-native-chart-kit';
 
 import styles from './styles';
@@ -79,43 +86,66 @@ const HomeScreen = () => {
             <Text
               style={styles.data}>{`Device ID: ${connectedDevice?.id}`}</Text>
             <Text>{`Data: ${monitoredData}`}</Text>
+
+            <TouchableOpacity onPress={() => connectToDevice(connectedDevice)}>
+              <Text>Hello world</Text>
+            </TouchableOpacity>
           </View>
         )}
 
         {receivedData.length !== 0 && (
-          <LineChart
-            width={WIDTH}
-            height={300}
-            withInnerLines={false}
-            data={{
-              labels: [],
-              datasets: [
-                {data: receivedData, color: () => 'blue', strokeWidth: 2},
-              ],
-            }}
-            // yAxisLabel="$"
-            chartConfig={{
-              backgroundColor: '#e26a00',
-              backgroundGradientFrom: '#fb8c00',
-              backgroundGradientTo: '#ffa726',
-              decimalPlaces: 2,
-              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              style: {
+          <>
+            <LineChart
+              width={WIDTH}
+              height={300}
+              withInnerLines={false}
+              data={{
+                labels: receivedData.map((_, index) => `${index + 1}`), // Dynamic labels per second
+                datasets: [
+                  {data: receivedData, color: () => 'blue', strokeWidth: 2},
+                ],
+              }}
+              chartConfig={{
+                backgroundColor: '#e26a00',
+                backgroundGradientFrom: '#fb8c00',
+                backgroundGradientTo: '#ffa726',
+                decimalPlaces: 1,
+                color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                style: {
+                  borderRadius: 16,
+                },
+                propsForDots: {
+                  r: '6',
+                  strokeWidth: '2',
+                  stroke: '#ffa726',
+                },
+
+                // Format y-axis labels to show temperature in °C
+                formatYLabel: value => `${value}°C`,
+              }}
+              bezier
+              yAxisLabel=""
+              yAxisSuffix="°C"
+              style={{
+                marginVertical: 8,
                 borderRadius: 16,
-              },
-              propsForDots: {
-                r: '6',
-                strokeWidth: '2',
-                stroke: '#ffa726',
-              },
-            }}
-            bezier
-            style={{
-              marginVertical: 8,
-              borderRadius: 16,
-            }}
-          />
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: 'bold',
+                color: 'white',
+                textAlign: 'center',
+                position: 'absolute',
+                bottom: -10,
+                right: 0,
+                transform: [{translateX: -40}],
+              }}>
+              Seconds
+            </Text>
+          </>
         )}
       </View>
       <View style={styles.buttonContainer}>
