@@ -30,6 +30,10 @@ const HomeScreen = () => {
     disconnectDevice,
     isBack,
     setIsBack,
+    collectValue,
+    resumeCollectData,
+    pauseCollectTempData,
+    isPaused,
   } = useBle();
 
   const WIDTH = Dimensions.get('screen').width - 35;
@@ -93,6 +97,11 @@ const HomeScreen = () => {
           </View>
         )}
 
+        <View>
+          <Text style={{paddingVertical: 10}}>Realtime Value:</Text>
+          <Text>{collectValue}</Text>
+        </View>
+
         {receivedData.length !== 0 && (
           <>
             <LineChart
@@ -154,25 +163,46 @@ const HomeScreen = () => {
           onPress={onScanDevices}
           disabled={!isDisableStopBtn}
         />
-        <View style={{height: 10}} />
 
-        {!!connectedDevice && (
-          <>
-            <Button
-              title="Collect Vibration Data"
-              onPress={collectVibrationData}
-              disabled={!isDisableStopBtn}
-            />
-            <View style={styles.containerBtnStopCollecting}>
+        {!isDisableStopBtn && (
+          <View style={{flexDirection: 'row', marginTop: 10}}>
+            <View style={{width: '100%'}}>
               <Button
-                title="Stop Collect Data"
-                onPress={stopCollectTmpData}
-                disabled={isDisableStopBtn}
-                color={'red'}
+                title={isPaused ? 'Resume' : 'Pause'}
+                onPress={isPaused ? resumeCollectData : pauseCollectTempData}
+                color={isPaused ? 'green' : 'red'}
               />
             </View>
-          </>
+            {/* <View style={{width: '48%'}}>
+              <Button
+                title="Pause"
+                onPress={pauseCollectTempData}
+                color={'red'}
+              />
+            </View> */}
+          </View>
         )}
+
+        <View style={{height: 10}} />
+
+        {/* {!!connectedDevice && ( */}
+        <>
+          <Button
+            title="Collect Vibration Data"
+            onPress={collectVibrationData}
+            disabled={!isDisableStopBtn}
+            color={'blue'}
+          />
+          <View style={styles.containerBtnStopCollecting}>
+            <Button
+              title="Stop Collect Data"
+              onPress={stopCollectTmpData}
+              disabled={isDisableStopBtn || isPaused}
+              color={'red'}
+            />
+          </View>
+        </>
+        {/* )} */}
       </View>
     </>
   );

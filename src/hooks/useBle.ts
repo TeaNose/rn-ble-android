@@ -43,6 +43,8 @@ export default function useBle() {
   const [isDisableStopBtn, setIsDisableStopBtn] = useState(true);
   const [receivedData, setReceivedData] = useState<number[]>([]);
   const [isBack, setIsBack] = useState(false);
+  const [collectValue, setCollectValue] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
 
   const reconnectToSavedDevice = async () => {
     try {
@@ -518,19 +520,11 @@ export default function useBle() {
 
       // setReceivedData(prevReceivedData => [...prevReceivedData, tem]);
 
-      if (isBack) {
-        console.log('hello world 222');
-        setReceivedData(prevReceivedData => [
-          ...prevReceivedData,
-          Math.round(tem),
-        ]);
-      } else {
-        console.log('hello world');
-        setReceivedData(prevReceivedData => [
-          ...prevReceivedData,
-          Math.round(tem === 0 ? velRms : tem),
-        ]);
-      }
+      const data = Math.round(((tem === 0 ? velRms : tem) * 100) / 100);
+
+      setReceivedData(prevReceivedData => [...prevReceivedData, data]);
+
+      setCollectValue(String(data));
 
       console.log('======highAccRms', highAccRms);
       console.log('======lowAccRms', lowAccRms);
@@ -560,10 +554,22 @@ export default function useBle() {
   };
 
   const stopCollectTmpData = async () => {
-    console.log('Stop Collecting Data');
-
     setIsDisableStopBtn(true);
     await collectData(4, 0, 0, 1000);
+  };
+
+  const pauseCollectTempData = async () => {
+    setIsPaused(true);
+    // await collectData(4, 0, 0, 1000);
+  };
+
+  const resumeCollectData = async () => {
+    setIsPaused(false);
+    // if (isBack) {
+    //   await collectData(1, 0, 0, 1000);
+    // } else {
+    //   await collectData(2, 0, 0, 3125);
+    // }
   };
 
   const collectVibrationData = async () => {
@@ -572,11 +578,11 @@ export default function useBle() {
     setMonitoredData(0);
     setReceivedData([]);
 
-    if (isBack) {
-      await collectData(1, 0, 0, 1000);
-    } else {
-      await collectData(2, 0, 0, 3125);
-    }
+    // if (isBack) {
+    //   await collectData(1, 0, 0, 1000);
+    // } else {
+    //   await collectData(2, 0, 0, 3125);
+    // }
   };
 
   return {
@@ -596,5 +602,9 @@ export default function useBle() {
     disconnectDevice,
     isBack,
     setIsBack,
+    collectValue,
+    resumeCollectData,
+    pauseCollectTempData,
+    isPaused,
   };
 }
