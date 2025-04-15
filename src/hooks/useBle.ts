@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-bitwise */
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {Alert, PermissionsAndroid, ToastAndroid} from 'react-native';
 import {
   BleError,
@@ -45,6 +46,8 @@ export default function useBle() {
   const [isBack, setIsBack] = useState(false);
   const [collectValue, setCollectValue] = useState('');
   const [isPaused, setIsPaused] = useState(false);
+
+  const collectedDataRef = useRef<number[]>([]);
 
   const reconnectToSavedDevice = async () => {
     try {
@@ -99,6 +102,16 @@ export default function useBle() {
   //     disconnectDevice(connectedDevice?.id);
   //   };
   // }, [connectedDevice?.id]);
+
+  let interval: number;
+
+  useEffect(() => {
+    interval = setInterval(() => {
+      setReceivedData([...collectedDataRef.current]);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const requestPermissions = async (callback: PermissionCallback) => {
     const apiLevel = await DeviceInfo.getApiLevel();
@@ -523,6 +536,7 @@ export default function useBle() {
       const data = Math.round(((tem === 0 ? velRms : tem) * 100) / 100);
 
       setReceivedData(prevReceivedData => [...prevReceivedData, data]);
+      // collectedDataRef.current.push(data);
 
       setCollectValue(String(data));
 
@@ -556,6 +570,7 @@ export default function useBle() {
   const stopCollectTmpData = async () => {
     setIsDisableStopBtn(true);
     await collectData(4, 0, 0, 1000);
+    // await clearInterval(interval);
   };
 
   const pauseCollectTempData = async () => {
@@ -585,6 +600,14 @@ export default function useBle() {
     // }
   };
 
+  const formattedChartData = useMemo(
+    () => ({
+      labels: receivedData.map((_, index) => `${index + 1}`), // Dynamic labels per second
+      datasets: [{data: receivedData, color: () => 'blue', strokeWidth: 2}],
+    }),
+    [receivedData],
+  );
+
   return {
     requestPermissions,
     scanForDevices,
@@ -606,5 +629,6 @@ export default function useBle() {
     resumeCollectData,
     pauseCollectTempData,
     isPaused,
+    formattedChartData,
   };
 }

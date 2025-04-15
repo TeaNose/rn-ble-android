@@ -34,6 +34,7 @@ const HomeScreen = () => {
     resumeCollectData,
     pauseCollectTempData,
     isPaused,
+    formattedChartData,
   } = useBle();
 
   const WIDTH = Dimensions.get('screen').width - 35;
@@ -108,12 +109,8 @@ const HomeScreen = () => {
               width={WIDTH}
               height={300}
               withInnerLines={false}
-              data={{
-                labels: receivedData.map((_, index) => `${index + 1}`), // Dynamic labels per second
-                datasets: [
-                  {data: receivedData, color: () => 'blue', strokeWidth: 2},
-                ],
-              }}
+              segments={0}
+              data={formattedChartData}
               chartConfig={{
                 backgroundColor: '#e26a00',
                 backgroundGradientFrom: '#fb8c00',
